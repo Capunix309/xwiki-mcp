@@ -23,6 +23,19 @@ pip install -r requirements.txt
 
 The project MCP configuration starts the server automatically. Restart Codex after changing the server or its configuration.
 
+## Add to Codex
+
+Add this server definition to `~/.codex/config.toml` to use it across projects, or to `<project>/.codex/config.toml` to use it only in that trusted project:
+
+```toml
+[mcp_servers.xwiki]
+command = "/absolute/path/to/PI-TSC/xwiki-mcp/.venv/bin/python"
+args = ["-m", "src.main"]
+cwd = "/absolute/path/to/PI-TSC/xwiki-mcp"
+```
+
+Replace both paths with the local `xwiki-mcp` folder. The server reads credentials from its `.env`. Restart Codex, then check the MCP server list. See the [Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli) and [configuration basics](https://learn.chatgpt.com/docs/config-file/config-basic) for more options.
+
 ## Tools
 
 - **Discovery:** `list_spaces`, `page_tree`, `search_pages`, `get_page_links`, `find_orphan_pages`
