@@ -1,0 +1,19 @@
+default_wiki = "team"
+
+[[wikis]]
+id = "team"
+base_url = "XWIKI_BASE_URL_ENDS_WITH_xwiki"
+wiki = "YOUR_TEAM"
+read_only = false
+username_env = "XWIKI_TEAM_USERNAME"
+password_env = "XWIKI_TEAM_PASSWORD"
+
+[[wikis]]
+id = "global"
+base_url = "XWIKI_BASE_URL_ENDS_WITH_xwiki"
+wiki = "xwiki"
+read_only = true
+username_env = "XWIKI_TEAM_USERNAME"
+password_env = "XWIKI_TEAM_PASSWORD"
+
+# The URL looks like that : {{base_url}}/wiki/{{wiki}}/

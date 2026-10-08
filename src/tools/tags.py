@@ -1,13 +1,8 @@
-"""Add tags to a page."""
-
-from ...core import config
-from ...core.client import page_url, request
+from ..core.client import page_url, request
 
 
 def register(mcp):
-    if config.READ_ONLY:
-        return
-
+    """Register this category of XWiki tools."""
     @mcp.tool()
     def add_tags(space: str, page: str, tags: list[str]) -> str:
         """Add one or more tags to a page."""

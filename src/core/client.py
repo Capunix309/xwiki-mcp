@@ -15,7 +15,7 @@ from . import config
 
 def wiki_url(resource: str = "", params: list[tuple[str, str]] | None = None) -> str:
     """Build a URL below the configured wiki resource."""
-    path = f"{config.rest_root()}/wikis/{urllib.parse.quote(config.WIKI, safe='')}"
+    path = f"{config.rest_root()}/wikis/{urllib.parse.quote(config.current().wiki, safe='')}"
     if resource:
         path += "/" + resource.lstrip("/")
     if params:
@@ -42,8 +42,11 @@ def request(method: str, url: str, body: bytes | None = None, content_type: str 
     headers = {"Accept": "application/json, application/xml;q=0.9, */*;q=0.8"}
     if content_type:
         headers["Content-Type"] = content_type
-    if config.USERNAME:
-        token = base64.b64encode(f"{config.USERNAME}:{config.PASSWORD}".encode()).decode("ascii")
+    settings = config.current()
+    if method.upper() not in {"GET", "HEAD", "OPTIONS"} and settings.read_only:
+        raise PermissionError(f"The {settings.name} XWiki is read-only.")
+    if settings.username:
+        token = base64.b64encode(f"{settings.username}:{settings.password}".encode()).decode("ascii")
         headers["Authorization"] = f"Basic {token}"
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     try:
@@ -150,7 +153,7 @@ def all_pages(space: str | None = None, author: str | None = None, max_pages: in
     while len(results) < max_pages:
         current = [(key, str(start) if key == "start" else value) for key, value in params]
         data = get("pages", current)
-        batch = records(data, "page") or records(data, "pages")
+        batch = records(data, "pageSummaries") or records(data, "page") or records(data, "pages")
         if not batch:
             break
         results.extend(batch)

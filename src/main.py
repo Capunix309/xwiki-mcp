@@ -5,14 +5,14 @@ import sys
 from mcp.server.fastmcp import FastMCP
 
 from src.core import config
-from src.tools import register_all
+from src.tools.registry import register_all
 
 
 def main() -> None:
     config.validate_config()
     server = FastMCP("xwiki")
     register_all(server)
-    print(f"XWiki MCP ready for wiki '{config.WIKI}'.", file=sys.stderr)
+    print(f"XWiki MCP ready for: {', '.join(config.WIKIS)}.", file=sys.stderr)
     server.run(transport="stdio")
 
 
