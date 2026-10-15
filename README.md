@@ -15,7 +15,7 @@ cp .env.example .env
 
 ### Add or configure XWiki wikis
 
-Each `[[integrations.xwiki.wikis]]` entry represents one wiki. Keep `id` as a short, unique selector the model will pass to tools. Set `wiki` to the XWiki wiki identifier: it is the segment after `/xwiki/wiki/` in a wiki URL (for example, `speam` in `/xwiki/wiki/speam/view/...`). Set `read_only = true` unless that wiki is explicitly approved for writing. `default_wiki` must match one of the configured `id` values.
+Each `[[integrations.xwiki.wikis]]` entry represents one wiki. Keep `id` as a short, unique selector the model will pass to tools. Set `wiki` to the XWiki wiki identifier: it is the segment after `/xwiki/wiki/` in a wiki URL (for example, `example` in `/xwiki/wiki/example/view/...`). Set `read_only = true` unless that wiki is explicitly approved for writing. `default_wiki` must match one of the configured `id` values.
 
 Add another wiki by copying this block into `config.toml` and replacing its values:
 
@@ -28,7 +28,7 @@ read_only = true
 
 Replace `wiki-id-from-url` with the segment after `/xwiki/wiki/` in that wiki's URL.
 
-The supplied example already defines `team`, `global`, `openshift`, and `SPEAM`; `team` is writable and the other three are read-only. To disable the entire XWiki integration, set `enabled = false` under `[integrations.xwiki]`.
+The example contains generic wiki entries to show the configuration format. Replace each wiki identifier and access mode with values for your environment. To disable XWiki, set `enabled = false` under `[integrations.xwiki]`.
 
 ### Add or configure Jira projects
 
@@ -36,16 +36,54 @@ Add one `[[integrations.jira.projects]]` block per project. `id` is a unique sel
 
 ```toml
 [[integrations.jira.projects]]
-id = "team"
+id = "primary"
 key = "ABC"
 read_only = true
 ```
 
-Replace the example `YOUR_PROJECT_KEY` in the supplied template with the real key. Add more blocks for other projects. Searches can cover all configured projects or select one by `id` or key. To disable Jira entirely, set `enabled = false` under `[integrations.jira]`.
+Replace `YOUR_PROJECT_KEY` in the supplied template with a configured project key. Add more blocks for other projects. Searches can cover all configured projects or select one by `id` or key. To disable Jira entirely, set `enabled = false` under `[integrations.jira]`.
 
 ### Credentials and tool visibility
 
 The `username_env` and `password_env` settings in `config.toml` name the variables to set in `.env`. The example file shows the expected variable names; replace its placeholder values with your credentials. Jira checks credentials when a Jira tool is called. XWiki checks them when the server starts.
+
+### Configure sprint-sheet automation
+
+The `[integrations.automation]` table configures the sprint sync. It references a Jira project by its existing project `id`, so the Jira project key and access mode stay in one place:
+
+```toml
+[integrations.automation]
+enabled = true
+jira_project = "primary"
+board_id = 1
+spreadsheet_url = "https://docs.google.com/spreadsheets/d/REPLACE_WITH_SPREADSHEET_ID/edit"
+timezone = "UTC"
+story_points_field = "customfield_12345"
+epic_link_field = "customfield_12346"
+team_members = ["Person One", "Person Two", "Person Three", "Person Four", "Person Five"]
+```
+
+Replace the Jira project selector, board ID, spreadsheet URL, custom field IDs, roster, and timezone with values for your setup. Find a board ID in the Jira board URL or with `jira_list_boards`. Story points use the Jira custom field ID shown in issue data or Jira field metadata. The spreadsheet URL may be copied from the browser address bar. The configured roster should match the person names used in that workbook.
+
+Dates are controlled by the caller for each sync. Pass optional `start_date` and `end_date` values in `YYYY-MM-DD` format when Jira's sprint dates do not match the reporting window. If omitted, the tool uses the sprint dates returned by Jira. If Jira does not provide a required date, pass it in the tool call.
+
+#### Google Sheets authorization
+
+Create a Google Cloud project, enable the Google Sheets API, and create an OAuth client with application type **Desktop app**. Download its JSON, then pass its path to this local authorization command from the MCP-tools checkout:
+
+```sh
+.venv/bin/python -m src.integrations.automation.core.sheets.authorize "/path/to/oauth-client.json"
+```
+
+The command opens Google sign-in, stores both the OAuth client settings and refreshable token in the macOS Keychain, then removes the imported JSON file from its original location. After the first import, the path can be omitted when reauthorizing:
+
+```sh
+.venv/bin/python -m src.integrations.automation.core.sheets.authorize
+```
+
+The command never prints credential contents and does not create token files. To revoke access, remove the `mcp-tools.google-sheets` entries from Keychain Access and revoke the app from your Google Account's third-party connections. If authorization expires or is revoked, run the command again.
+
+The automation only registers when `enabled = true`. It requires Jira to be enabled, the configured project to exist, and Google OAuth to be completed before a sync call can write the workbook.
 
 Write tools are visible by default. Set `[tools].expose_write = false` to hide them. Destructive tools are hidden by default; set `[tools].expose_destructive = true` to expose them. A destructive write tool appears only when both settings allow it. Restart the MCP client after changing the server configuration.
 
@@ -126,6 +164,12 @@ To run the server manually for debugging only, open a terminal in the MCP-tools 
 
 Every Jira tool is scoped to projects in `config.toml`; read-only projects reject writes. Write tools are annotated as writes so Codex can request approval according to the MCP server approval mode. The Jira MCP does not expose arbitrary HTTP requests or issue deletion.
 
+## Automation tool
+
+- `sync_sprint_sheet` (write) fetches sprint issues, story points, and project worklogs from Jira, then updates the existing multi-sprint Google Sheet, formulas, analysis, and charts. Provide the exact sprint name; optional start and end dates override the reporting window. Each sync replaces that sprint's Worklogs rows from the current Jira snapshot, while preserving rows for other sprints, so reruns do not create duplicates.
+
+The sync includes project worklogs within the sprint date window, even when their issue is outside that sprint. The tool is a write and follows the MCP client's configured write approval behavior.
+
 ## XWiki tools
 
 - `read_page` (read) returns a page's content and metadata.
@@ -155,6 +199,6 @@ Every Jira tool is scoped to projects in `config.toml`; read-only projects rejec
 - `project_status` (read) collects checkbox tasks and nearby owner labels from pages in a space.
 - `wiki_digest` (read) lists recently changed pages with titles, authors, and modification dates.
 
-Every XWiki tool accepts the `wiki` selector. It defaults to `team`; page names use `space` and `page`, with nested spaces separated by `/`.
+Every XWiki tool accepts the `wiki` selector. It defaults to the configured `default_wiki`; page names use `space` and `page`, with nested spaces separated by `/`.
 
-The Jira integration follows the teacher's SPEAM pages “AI & API capabilities on Jira and XWiki” and “Project Backlog Management,” including human review for writes, the `ai-assisted` label, and a visible AI comment prefix.
+The Jira integration provides bounded project-scoped reads and writes. Issue creation adds an `ai-assisted` label, and AI-generated comments and worklogs carry a visible `[AI]` prefix.

@@ -8,6 +8,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -90,6 +91,41 @@ def _read_config(path: Path = CONFIG_PATH) -> dict:
     default_wiki = xwiki.get("default_wiki", "")
     if xwiki["enabled"] and default_wiki not in ids:
         raise ValueError("integrations.xwiki.default_wiki must match a configured wiki id.")
+
+    automation = integrations.get("automation", {"enabled": False})
+    if not isinstance(automation, dict) or not isinstance(automation.get("enabled", False), bool):
+        raise ValueError("integrations.automation.enabled must be true or false.")
+    if automation.get("enabled", False):
+        if not integrations["jira"]["enabled"]:
+            raise ValueError("The automation integration requires Jira to be enabled.")
+        project_id = automation.get("jira_project")
+        if not isinstance(project_id, str) or project_id not in project_ids:
+            raise ValueError("integrations.automation.jira_project must match a configured Jira project id.")
+        board_id = automation.get("board_id")
+        if isinstance(board_id, bool) or not isinstance(board_id, int) or board_id <= 0:
+            raise ValueError("integrations.automation.board_id must be a positive integer.")
+        spreadsheet_url = automation.get("spreadsheet_url")
+        parsed_sheet = urlparse(spreadsheet_url) if isinstance(spreadsheet_url, str) else None
+        if (not parsed_sheet or parsed_sheet.netloc not in {"docs.google.com", "sheets.google.com"}
+                or not re.fullmatch(r"/spreadsheets/d/[A-Za-z0-9_-]+(?:/.*)?", parsed_sheet.path)):
+            raise ValueError("Set integrations.automation.spreadsheet_url to a Google Sheets URL.")
+        story_points_field = automation.get("story_points_field")
+        if not isinstance(story_points_field, str) or not re.fullmatch(r"customfield_[0-9]+", story_points_field):
+            raise ValueError("integrations.automation.story_points_field must look like customfield_12345.")
+        epic_link_field = automation.get("epic_link_field")
+        if epic_link_field is not None and (not isinstance(epic_link_field, str)
+                                             or not re.fullmatch(r"customfield_[0-9]+", epic_link_field)):
+            raise ValueError("integrations.automation.epic_link_field must look like customfield_12345.")
+        members = automation.get("team_members")
+        if (not isinstance(members, list) or not members
+                or any(not isinstance(member, str) or not member.strip() for member in members)
+                or len({member.casefold() for member in members}) != len(members)):
+            raise ValueError("integrations.automation.team_members must contain unique, non-empty names.")
+        timezone = automation.get("timezone", "UTC")
+        try:
+            ZoneInfo(timezone)
+        except (ZoneInfoNotFoundError, TypeError):
+            raise ValueError("integrations.automation.timezone must be a valid IANA timezone.") from None
     return data
 
 
@@ -186,6 +222,11 @@ def expose_destructive_tools() -> bool:
 def expose_write_tools() -> bool:
     """Return whether tools that can change data should be registered with the model."""
     return CONFIG.get("tools", {}).get("expose_write", True)
+
+
+def automation_settings() -> dict:
+    """Return validated settings for the sprint sheet automation."""
+    return CONFIG.get("integrations", {}).get("automation", {"enabled": False})
 
 
 def validate_config() -> None:

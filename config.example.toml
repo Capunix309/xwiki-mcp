@@ -1,6 +1,6 @@
 [shared]
 # Common host; integration api_path values add each application's context path.
-base_url = "https://jira.montefiore.ulg.ac.be"
+base_url = "https://jira.example.com"
 
 [tools]
 # Write tools remain visible unless explicitly disabled.
@@ -11,28 +11,28 @@ expose_destructive = false
 [integrations.xwiki]
 enabled = true
 api_path = "/xwiki"
-default_wiki = "team"
-username_env = "XWIKI_TEAM_USERNAME"
-password_env = "XWIKI_TEAM_PASSWORD"
+default_wiki = "primary"
+username_env = "XWIKI_USERNAME"
+password_env = "XWIKI_PASSWORD"
 
 [[integrations.xwiki.wikis]]
-id = "team"
-wiki = "team00xx"
+id = "primary"
+wiki = "wiki-id-1"
 read_only = false
 
 [[integrations.xwiki.wikis]]
-id = "global"
-wiki = "xwiki"
+id = "wiki-b"
+wiki = "wiki-id-2"
 read_only = true
 
 [[integrations.xwiki.wikis]]
-id = "openshift"
-wiki = "openshiftcluster"
+id = "wiki-c"
+wiki = "wiki-id-3"
 read_only = true
 
 [[integrations.xwiki.wikis]]
-id = "SPEAM"
-wiki = "speam"
+id = "wiki-d"
+wiki = "wiki-id-4"
 read_only = true
 
 [integrations.jira]
@@ -43,6 +43,17 @@ password_env = "JIRA_PASSWORD"
 
 # Replace this entry with each Jira project the MCP may access.
 [[integrations.jira.projects]]
-id = "team"
+id = "primary"
 key = "YOUR_PROJECT_KEY"
 read_only = false
+
+[integrations.automation]
+# Enable after setting the project, board, sheet, and Google OAuth client path.
+enabled = false
+jira_project = "primary"
+board_id = 1 # Replace with the board ID from its Jira URL.
+spreadsheet_url = "https://docs.google.com/spreadsheets/d/REPLACE_WITH_SPREADSHEET_ID/edit"
+timezone = "UTC"
+story_points_field = "customfield_12345"
+epic_link_field = "customfield_12346"
+team_members = ["Person One", "Person Two", "Person Three", "Person Four", "Person Five"]

@@ -1,4 +1,4 @@
-"""Register tool groups with a per-call team/global wiki selector."""
+"""Register tool groups with a per-call wiki selector."""
 
 from functools import wraps
 import inspect
@@ -26,7 +26,7 @@ class _WikiAwareServer:
 
             @wraps(function)
             def invoke(*call_args, **call_kwargs):
-                token = config.select_wiki(call_kwargs.pop("wiki", "team"))
+                token = config.select_wiki(call_kwargs.pop("wiki", config.DEFAULT_WIKI))
                 try:
                     return function(*call_args, **call_kwargs)
                 finally:

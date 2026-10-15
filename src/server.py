@@ -1,4 +1,4 @@
-"""Start the combined XWiki and Jira MCP server over stdio."""
+"""Start the combined XWiki, Jira, and automation MCP server over stdio."""
 
 import sys
 
@@ -26,6 +26,11 @@ def create_server() -> FastMCP:
 
         register_all(tool_server)
         enabled.append("Jira")
+    if config.automation_settings().get("enabled", False):
+        from .integrations.automation.registry import register_all
+
+        register_all(tool_server)
+        enabled.append("Automation")
     print(f"MCP-tools ready for: {', '.join(enabled) or 'no integrations'}.", file=sys.stderr)
     return server
 

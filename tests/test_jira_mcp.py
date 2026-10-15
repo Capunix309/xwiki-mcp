@@ -20,7 +20,7 @@ class JiraMCPTests(unittest.TestCase):
         integrations["jira"] = {
             **integrations["jira"],
             "projects": [
-                {"id": "team", "key": "ABC", "read_only": False},
+                {"id": "primary", "key": "ABC", "read_only": False},
                 {"id": "reference", "key": "RO", "read_only": True},
             ],
         }
@@ -43,10 +43,10 @@ class JiraMCPTests(unittest.TestCase):
     def test_issue_creation_requires_description_and_adds_ai_marker(self):
         create = self.server._tool_manager.get_tool("jira_create_issue").fn
         with self.assertRaises(ValueError):
-            create("team", "Story", "A feature", "")
+            create("primary", "Story", "A feature", "")
 
         with patch.object(issue_writes, "request", return_value={"key": "ABC-1"}) as request_mock:
-            create("team", "Story", "A feature", "Details", ["backend"])
+            create("primary", "Story", "A feature", "Details", ["backend"])
         fields = request_mock.call_args.kwargs["body"]["fields"]
         self.assertEqual(fields["description"], "[AI] Details")
         self.assertEqual(fields["labels"], ["backend", "ai-assisted"])
