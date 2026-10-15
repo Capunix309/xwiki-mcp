@@ -2,5 +2,5 @@
 .venv/
 __pycache__/
 *.py[cod]
-/uploads/
-wikis.toml
+config.toml
+.pytest_cache/

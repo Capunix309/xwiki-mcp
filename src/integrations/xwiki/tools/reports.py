@@ -1,5 +1,6 @@
 import json
 
+from mcp.types import ToolAnnotations
 from ..core import config
 from ..core.client import all_pages, page_fields
 from ..core.client import get, records
@@ -7,7 +8,7 @@ from ..core.client import get, records
 
 def register(mcp):
     """Register this category of XWiki tools."""
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def recent_changes(days: int = 30, limit: int = 50) -> str:
         """List pages modified within the last number of days."""
         if not 1 <= days <= 3650 or not 1 <= limit <= 100:
@@ -18,7 +19,7 @@ def register(mcp):
                            "changes": records(data, "modification") or records(data, "modifications") or data},
                           ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def who_wrote_pages(space: str | None = None, author: str | None = None, limit: int = 500) -> str:
         """List page titles, creators, last editors, and modified dates."""
         if not 1 <= limit <= 500:

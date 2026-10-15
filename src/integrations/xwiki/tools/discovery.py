@@ -2,6 +2,7 @@ import json
 import re
 import urllib.parse
 
+from mcp.types import ToolAnnotations
 from ..core import config
 from ..core.client import all_pages, get, get_page, page_fields, records, value_text
 
@@ -10,7 +11,7 @@ LINK = re.compile(r"\[\[(.*?)\]\]")
 
 def register(mcp):
     """Register this category of XWiki tools."""
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def find_orphan_pages(space: str | None = None, scan_limit: int = 100) -> str:
         """Find pages with no incoming XWiki syntax links among the scanned pages."""
         if not 1 <= scan_limit <= 250:
@@ -37,7 +38,7 @@ def register(mcp):
         return json.dumps({"scanned": len(pages), "truncated": len(pages) == scan_limit,
                            "orphans": orphans}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def get_page_links(space: str, page: str) -> str:
         """List page links found in XWiki syntax on a page."""
         data = get_page(space, page)
@@ -45,7 +46,7 @@ def register(mcp):
         links = sorted({match.rsplit(">>", 1)[-1].strip() for match in LINK.findall(content) if match.strip()})
         return json.dumps({"page": f"{space}.{page}", "links": links}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def list_spaces() -> str:
         """List spaces available in this XWiki."""
         data = get("spaces", [("start", "0"), ("number", "500")])
@@ -55,7 +56,7 @@ def register(mcp):
         result.sort(key=lambda row: row["name"].casefold())
         return json.dumps({"count": len(result), "spaces": result}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def page_tree(space: str | None = None, author: str | None = None, limit: int = 500) -> str:
         """List pages with creator, last editor, modified date, and version; optionally filter by space or author."""
         if not 1 <= limit <= 500:
@@ -65,7 +66,7 @@ def register(mcp):
         return json.dumps({"wiki": config.current().wiki, "count": len(pages), "pages": pages,
                            "truncated": len(pages) == limit}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def search_pages(query: str, limit: int = 20, start: int = 0,
                      scopes: list[str] | None = None, space: str | None = None) -> str:
         """Search pages, optionally limited to a space; use start and limit to paginate."""

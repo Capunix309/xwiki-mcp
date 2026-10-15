@@ -1,9 +1,10 @@
+from mcp.types import ToolAnnotations
 from ..core.client import page_url, request
 
 
 def register(mcp):
     """Register this category of XWiki tools."""
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False))
     def add_tags(space: str, page: str, tags: list[str]) -> str:
         """Add one or more tags to a page."""
         if not tags or any(not tag.strip() for tag in tags):

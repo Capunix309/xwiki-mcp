@@ -1,12 +1,13 @@
 import difflib
 import json
 
+from mcp.types import ToolAnnotations
 from ..core.client import get_page, records, value_text
 
 
 def register(mcp):
     """Register this category of XWiki tools."""
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def diff_page_versions(space: str, page: str, old_version: str, new_version: str) -> str:
         """Return a unified text diff between two page versions, such as 1.2 and 1.3."""
         old = get_page(space, page, f"history/{old_version}")
@@ -19,7 +20,7 @@ def register(mcp):
         return json.dumps({"page": f"{space}.{page}", "oldVersion": old_version,
                            "newVersion": new_version, "diff": diff}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def page_history(space: str, page: str, limit: int = 30) -> str:
         """List recent page versions, including author and date when available."""
         if not 1 <= limit <= 100:

@@ -1,6 +1,7 @@
 import json
 import re
 
+from mcp.types import ToolAnnotations
 from ..core import config
 from ..core.client import all_pages, get_page, page_fields, page_url, request, value_text, xml_page
 
@@ -19,7 +20,7 @@ OWNER = re.compile(r"(?:owner|responsible|assigned\s+to)\s*:\s*([^,;]+)", re.I)
 
 def register(mcp):
     """Register this category of XWiki tools."""
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def consistency_check(space: str, required_headings: list[str] | None = None,
                           scan_limit: int = 100) -> str:
         """Check pages for required headings and unresolved internal page links."""
@@ -53,7 +54,7 @@ def register(mcp):
         return json.dumps({"space": space, "pagesScanned": len(pages), "truncated": len(pages) == scan_limit,
                            "issues": issues}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False))
     def create_page_from_template(space: str, page: str, template: str, title: str,
                                   fields: dict[str, str] | None = None) -> str:
         """Create a meeting, decision, task, or report page using supplied field values."""
@@ -69,7 +70,7 @@ def register(mcp):
         response, _ = request("PUT", page_url(space, page), xml_page(content, title, "xwiki/2.1"), "application/xml")
         return response.decode("utf-8", errors="replace") or f"Created {template} page {space}.{page}."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def decision_log(space: str, scan_limit: int = 100) -> str:
         """Find likely decisions in a space, with the source page and matching lines."""
         if not 1 <= scan_limit <= 250:
@@ -89,7 +90,7 @@ def register(mcp):
         return json.dumps({"space": space, "pagesScanned": len(pages), "truncated": len(pages) == scan_limit,
                            "decisions": matches}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def project_status(space: str, scan_limit: int = 100) -> str:
         """Collect checkbox tasks and nearby owner labels from pages in a space."""
         if not 1 <= scan_limit <= 250:
@@ -110,7 +111,7 @@ def register(mcp):
                            "total": len(tasks), "completed": sum(task["complete"] for task in tasks),
                            "tasks": tasks}, ensure_ascii=False, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def wiki_digest(days: int = 14, limit: int = 30) -> str:
         """List recently changed pages with title, author, and modified date."""
         if not 1 <= days <= 3650 or not 1 <= limit <= 100:

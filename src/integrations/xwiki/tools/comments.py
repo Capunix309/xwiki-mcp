@@ -1,12 +1,13 @@
 import xml.etree.ElementTree as ET
 import json
 
+from mcp.types import ToolAnnotations
 from ..core.client import get_page, page_url, records, request
 
 
 def register(mcp):
     """Register this category of XWiki tools."""
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False))
     def add_comment(space: str, page: str, text: str) -> str:
         """Post a comment on a page."""
         root = ET.Element("comment", xmlns="http://www.xwiki.org")
@@ -15,7 +16,7 @@ def register(mcp):
                               ET.tostring(root, encoding="utf-8", xml_declaration=True), "application/xml")
         return response.decode("utf-8", errors="replace") or f"Added comment to {space}.{page}."
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False))
     def list_comments(space: str, page: str, limit: int = 50) -> str:
         """List comments attached to a page."""
         if not 1 <= limit <= 100:

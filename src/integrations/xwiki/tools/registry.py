@@ -14,9 +14,9 @@ class _WikiAwareServer:
         self._server = server
 
     def tool(self, *args, **kwargs):
-        register = self._server.tool(*args, **kwargs)
-
         def decorate(function):
+            tool_kwargs = dict(kwargs)
+            register = self._server.tool(*args, **tool_kwargs)
             signature = inspect.signature(function)
             parameters = list(signature.parameters.values())
             parameters.append(inspect.Parameter(
