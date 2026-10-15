@@ -165,10 +165,15 @@ def all_pages(space: str | None = None, author: str | None = None, max_pages: in
 
 def page_fields(item: dict[str, Any]) -> dict[str, Any]:
     """Normalize page summary metadata for tool responses."""
+    space = value_text(item, "space")
+    # XWiki represents nested references with dots in summary metadata, while
+    # the REST page URL builder accepts slash-separated space paths.
+    if space:
+        space = "/".join(part for part in space.split(".") if part)
     return {
         "fullName": value_text(item, "fullName", "pageFullName", "id"),
         "title": value_text(item, "title"),
-        "space": value_text(item, "space"),
+        "space": space,
         "pageName": value_text(item, "name", "pageName"),
         "creator": value_text(item, "creator"),
         "author": value_text(item, "author"),

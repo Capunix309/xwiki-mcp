@@ -97,9 +97,14 @@ def register(mcp):
             raise ValueError("scan_limit must be between 1 and 250.")
         pages = all_pages(space, max_pages=scan_limit)
         tasks = []
+        errors = []
         for item in pages:
             meta = page_fields(item)
-            body = get_page(meta["space"], meta["pageName"])
+            try:
+                body = get_page(meta["space"], meta["pageName"])
+            except RuntimeError as exc:
+                errors.append({"page": meta["fullName"], "error": str(exc)})
+                continue
             lines = value_text(body, "content").splitlines()
             owner = next((match.group(1).strip() for line in lines if (match := OWNER.search(line))), "")
             for line in lines:
@@ -108,6 +113,7 @@ def register(mcp):
                     tasks.append({"page": meta["fullName"], "task": match.group(2).strip(),
                                   "complete": match.group(1).lower() == "x", "owner": owner})
         return json.dumps({"space": space, "pagesScanned": len(pages), "truncated": len(pages) == scan_limit,
+                           "readErrors": errors,
                            "total": len(tasks), "completed": sum(task["complete"] for task in tasks),
                            "tasks": tasks}, ensure_ascii=False, indent=2)
 

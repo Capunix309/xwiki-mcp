@@ -2,21 +2,58 @@
 
 One stdio MCP server exposes the enabled XWiki and Jira integrations. Production code lives under `src/`; each integration has a `core/` directory for shared client/configuration logic and a `tools/` directory organized by responsibility. Tests live separately under `tests/`, one file per integration.
 
-## Configure
+## 1. Configure the integrations
 
-Copy `config.example.toml` to `config.toml`. This central TOML file contains the shared host, integration enablement, API paths, credential environment-variable names, XWiki wiki definitions, and Jira project access rules. The active `config.toml` is ignored by Git. Set `enabled = false` on an integration to omit its tools at server startup.
+These settings belong to the **MCP-tools checkout**, not to the project that will use the MCP. From the `MCP-tools/` folder, copy the example files:
 
-Add one `[[integrations.jira.projects]]` table per project. Set a unique `id`, the Jira project `key`, and `read_only = true` or `false`. Jira tool calls select a configured project by id or key; searches and issue reads are scoped to it, and writes are rejected for read-only projects. Replace the example `YOUR_PROJECT_KEY` with a real project key.
+```sh
+cp config.example.toml config.toml
+cp .env.example .env
+```
 
-Write tools are visible by default. Set `[tools].expose_write = false` in `config.toml` to hide them. Destructive tools are hidden by default; set `[tools].expose_destructive = true` to allow them, too. A destructive write tool is exposed only when both settings allow it. Restart the MCP server after changing these settings.
+`config.toml` is ignored by Git. It contains the server host, enabled integrations, wiki and project access, and the names of environment variables used for credentials. `.env` contains the corresponding secret values and is also ignored by Git. Never put credentials in a project's Codex or Claude MCP registration file.
 
-Copy `.env.example` to `.env` and set the credential values referenced by `config.toml`. The `.env` file is ignored by Git. Jira credentials are checked when Jira tools are called; XWiki credentials are validated at startup when XWiki is enabled.
+### Add or configure XWiki wikis
 
-The XWiki configuration retains the `team`, `global`, `openshift`, and `SPEAM` wikis. `team` is read-write; the other three are read-only.
+Each `[[integrations.xwiki.wikis]]` entry represents one wiki. Keep `id` as a short, unique selector the model will pass to tools. Set `wiki` to the XWiki wiki identifier: it is the segment after `/xwiki/wiki/` in a wiki URL (for example, `speam` in `/xwiki/wiki/speam/view/...`). Set `read_only = true` unless that wiki is explicitly approved for writing. `default_wiki` must match one of the configured `id` values.
 
-## Install and connect to Codex
+Add another wiki by copying this block into `config.toml` and replacing its values:
 
-From the repository root, install the dependencies:
+```toml
+[[integrations.xwiki.wikis]]
+id = "research"
+wiki = "wiki-id-from-url"
+read_only = true
+```
+
+Replace `wiki-id-from-url` with the segment after `/xwiki/wiki/` in that wiki's URL.
+
+The supplied example already defines `team`, `global`, `openshift`, and `SPEAM`; `team` is writable and the other three are read-only. To disable the entire XWiki integration, set `enabled = false` under `[integrations.xwiki]`.
+
+### Add or configure Jira projects
+
+Add one `[[integrations.jira.projects]]` block per project. `id` is a unique selector for tool calls. `key` is the Jira project key, usually the prefix of an issue key (`ABC` in `ABC-123`); you can also find it in the Jira project URL or project details. Set `read_only = true` to prevent all Jira changes in that project.
+
+```toml
+[[integrations.jira.projects]]
+id = "team"
+key = "ABC"
+read_only = true
+```
+
+Replace the example `YOUR_PROJECT_KEY` in the supplied template with the real key. Add more blocks for other projects. Searches can cover all configured projects or select one by `id` or key. To disable Jira entirely, set `enabled = false` under `[integrations.jira]`.
+
+### Credentials and tool visibility
+
+The `username_env` and `password_env` settings in `config.toml` name the variables to set in `.env`. The example file shows the expected variable names; replace its placeholder values with your credentials. Jira checks credentials when a Jira tool is called. XWiki checks them when the server starts.
+
+Write tools are visible by default. Set `[tools].expose_write = false` to hide them. Destructive tools are hidden by default; set `[tools].expose_destructive = true` to expose them. A destructive write tool appears only when both settings allow it. Restart the MCP client after changing the server configuration.
+
+## 2. Install the MCP in a project
+
+Install the MCP server once, then register it only in each project where you want it available. The project gets a small client configuration file; the MCP's own `config.toml` and `.env` remain in the separate `MCP-tools/` checkout.
+
+From the MCP-tools repository root, install its dependencies:
 
 ```sh
 python3 -m venv .venv
@@ -24,7 +61,20 @@ python3 -m venv .venv
 pip install -r requirements.txt
 ```
 
-Add this server entry to Codex's `~/.codex/config.toml` or a trusted project's `.codex/config.toml`:
+In each project root, add the relevant client file:
+
+```text
+my-project/
+├── .codex/
+│   └── config.toml   # Codex project registration
+└── .mcp.json         # Claude Code project registration (if used)
+```
+
+Replace `/absolute/path/to/MCP-tools` below with the full path to the MCP-tools checkout on your machine.
+
+### Codex
+
+Create `my-project/.codex/config.toml`:
 
 ```toml
 [mcp_servers.mcp-tools]
@@ -34,9 +84,29 @@ cwd = "/absolute/path/to/MCP-tools"
 default_tools_approval_mode = "writes"
 ```
 
-The `writes` mode uses each tool's `readOnlyHint`: read tools run without a prompt, and write tools request approval. This covers both Jira and XWiki without per-tool approval entries. Restart Codex after changing its MCP configuration.
+Codex loads project `.codex/config.toml` for trusted projects. Trust the project when prompted. The `writes` approval mode uses each tool's `readOnlyHint`: reads run without a prompt and writes request approval. Codex starts the server automatically; no separate server terminal is needed. See the [Codex MCP configuration guide](https://learn.chatgpt.com/docs/extend/mcp).
 
-Codex launches the server automatically when it connects to this MCP configuration. You do not need to run the server command in a separate terminal. For a manual local run when debugging, use `python -m src.server` from the repository root.
+### Claude Code
+
+Create `my-project/.mcp.json` (replace both occurrences of the path with your MCP-tools checkout):
+
+```json
+{
+  "mcpServers": {
+    "mcp-tools": {
+      "command": "/absolute/path/to/MCP-tools/.venv/bin/python",
+      "args": ["-m", "src.server"],
+      "env": {
+        "PYTHONPATH": "/absolute/path/to/MCP-tools"
+      }
+    }
+  }
+}
+```
+
+Claude Code starts project `.mcp.json` servers from the project directory; `PYTHONPATH` points Python to the MCP-tools checkout. Open the project in Claude Code and approve the project-scoped server when prompted. Run `/mcp` or `claude mcp list` to check its connection. See the [Claude Code MCP guide](https://docs.anthropic.com/en/docs/claude-code/mcp).
+
+To run the server manually for debugging only, open a terminal in the MCP-tools repository and run `python -m src.server`.
 
 ## Jira tools
 
