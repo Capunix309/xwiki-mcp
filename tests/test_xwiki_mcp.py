@@ -2,11 +2,20 @@ import unittest
 from unittest.mock import patch
 
 from src.integrations.xwiki.core import config as xwiki_config
+from src.integrations.xwiki.core.client import normalize_space_path, page_url
 from src.server import create_server
 from src.shared import config
 
 
 class XWikiMCPTests(unittest.TestCase):
+    def test_nested_space_paths_are_normalized_consistently(self):
+        self.assertEqual(normalize_space_path("Planning.Equipe"), "Planning/Equipe")
+        self.assertEqual(normalize_space_path("Planning/Equipe"), "Planning/Equipe")
+        self.assertEqual(
+            page_url("Planning.Equipe", "Sprint 1"),
+            page_url("Planning/Equipe", "Sprint 1"),
+        )
+
     def test_central_config_keeps_wikis_and_permissions(self):
         self.assertIn(xwiki_config.DEFAULT_WIKI, xwiki_config.WIKIS)
         self.assertTrue(any(wiki.read_only for wiki in xwiki_config.WIKIS.values()))

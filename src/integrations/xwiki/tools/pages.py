@@ -6,14 +6,12 @@ from urllib.parse import urlencode
 
 from mcp.types import ToolAnnotations
 from ..core import config
-from ..core.client import get_page, page_url, request, value_text, xml_page
+from ..core.client import get_page, normalize_space_path, page_url, request, value_text, xml_page
 
 
 def _reference_xml(space: str, page: str, wiki: str) -> ET.Element:
     """Serialize a document reference in the format expected by XWiki jobs."""
-    parts = [part.strip() for part in space.split("/")]
-    if not parts or any(part in {"", ".", ".."} for part in parts):
-        raise ValueError("space must contain valid space names separated by '/'.")
+    parts = normalize_space_path(space).split("/")
     if not page.strip() or page in {".", ".."} or "/" in page or "\\" in page:
         raise ValueError("page must be a single, non-empty page name.")
     if not wiki or any(char in wiki for char in "/\\:"):

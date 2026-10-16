@@ -35,8 +35,8 @@ def load_settings() -> AutomationSettings:
         spreadsheet_url=entry["spreadsheet_url"],
         spreadsheet_id=_spreadsheet_id(entry["spreadsheet_url"]),
         timezone=ZoneInfo(entry.get("timezone", "UTC")),
-        story_points_field=entry["story_points_field"],
-        epic_link_field=entry.get("epic_link_field"),
+        story_points_field=project["story_points_field"],
+        epic_link_field=project.get("epic_link_field"),
         team_members=tuple(entry["team_members"]),
     )
 

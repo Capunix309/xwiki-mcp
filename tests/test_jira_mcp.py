@@ -20,7 +20,12 @@ class JiraMCPTests(unittest.TestCase):
         integrations["jira"] = {
             **integrations["jira"],
             "projects": [
-                {"id": "primary", "key": "ABC", "read_only": False},
+                {
+                    "id": "primary", "key": "ABC", "read_only": False,
+                    "epic_name_field": "customfield_10003",
+                    "story_points_field": "customfield_10006",
+                    "epic_link_field": "customfield_10001",
+                },
                 {"id": "reference", "key": "RO", "read_only": True},
             ],
         }
@@ -50,6 +55,63 @@ class JiraMCPTests(unittest.TestCase):
         fields = request_mock.call_args.kwargs["body"]["fields"]
         self.assertEqual(fields["description"], "[AI] Details")
         self.assertEqual(fields["labels"], ["backend", "ai-assisted"])
+
+    def test_create_epic_sets_required_epic_name(self):
+        create = self.server._tool_manager.get_tool("jira_create_issue").fn
+        with self.assertRaisesRegex(ValueError, "epic_name is required"):
+            create("primary", "Epic", "Platform", "Epic details")
+
+        with patch.object(issue_writes, "request", return_value={"key": "ABC-1"}) as request_mock:
+            create("primary", "Epic", "Platform", "Epic details", epic_name="Platform outcomes")
+        fields = request_mock.call_args.kwargs["body"]["fields"]
+        self.assertEqual(fields["customfield_10003"], "Platform outcomes")
+
+    def test_create_issue_stores_story_points_and_epic_key_in_jira_fields(self):
+        create = self.server._tool_manager.get_tool("jira_create_issue").fn
+        with patch.object(issue_writes, "request", return_value={"key": "ABC-2"}) as request_mock:
+            create("primary", "Story", "Build API", "Details", story_points=5, epic_key="ABC-1")
+        fields = request_mock.call_args.kwargs["body"]["fields"]
+        self.assertEqual(fields["customfield_10006"], 5)
+        self.assertEqual(fields["customfield_10001"], "ABC-1")
+
+    def test_update_issue_stores_story_points_and_epic_key_in_jira_fields(self):
+        update = self.server._tool_manager.get_tool("jira_update_issue").fn
+        with patch.object(issue_writes, "request", return_value={"status": 204}) as request_mock:
+            update("ABC-2", story_points=3.5, epic_key="ABC-1")
+        fields = request_mock.call_args.kwargs["body"]["fields"]
+        self.assertEqual(fields, {"customfield_10006": 3.5, "customfield_10001": "ABC-1"})
+
+    def test_update_issue_can_clear_epic_link_with_null(self):
+        update = self.server._tool_manager.get_tool("jira_update_issue").fn
+        with patch.object(issue_writes, "request", return_value={"status": 204}) as request_mock:
+            update("ABC-2", clear_epic_link=True)
+        fields = request_mock.call_args.kwargs["body"]["fields"]
+        self.assertEqual(fields, {"customfield_10001": None})
+
+    def test_update_issue_rejects_setting_and_clearing_epic_link_together(self):
+        update = self.server._tool_manager.get_tool("jira_update_issue").fn
+        with self.assertRaisesRegex(ValueError, "Set epic_key or clear_epic_link"):
+            update("ABC-2", epic_key="ABC-1", clear_epic_link=True)
+
+    def test_issue_writes_use_the_selected_jira_project_field_ids(self):
+        integrations = dict(config.CONFIG["integrations"])
+        jira = dict(integrations["jira"])
+        jira["projects"] = [
+            *jira["projects"],
+            {
+                "id": "secondary", "key": "DEF", "read_only": False,
+                "story_points_field": "customfield_20006",
+                "epic_link_field": "customfield_20008",
+            },
+        ]
+        integrations["jira"] = jira
+        update = self.server._tool_manager.get_tool("jira_update_issue").fn
+        with patch.object(config, "CONFIG", {**config.CONFIG, "integrations": integrations}), \
+             patch.object(issue_writes, "request", return_value={"status": 204}) as request_mock:
+            update("DEF-2", story_points=2, epic_key="DEF-1")
+        fields = request_mock.call_args.kwargs["body"]["fields"]
+        self.assertEqual(fields["customfield_20006"], 2)
+        self.assertEqual(fields["customfield_20008"], "DEF-1")
 
     def test_search_scopes_each_configured_project(self):
         with patch.object(issue_search, "request", return_value={"issues": [{"key": "ABC-2"}]}) as request_mock:

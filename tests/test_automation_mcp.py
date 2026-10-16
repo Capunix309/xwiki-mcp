@@ -19,7 +19,7 @@ from mcp.server.fastmcp import FastMCP
 from src.integrations.automation import registry
 from src.integrations.automation.core import jira
 from src.integrations.automation.core.normalize import worklog_record
-from src.integrations.automation.core.settings import AutomationSettings
+from src.integrations.automation.core.settings import AutomationSettings, load_settings
 from src.integrations.automation.core.sheets.client import Formula, update_cells_request
 from src.integrations.automation.core.settings import _spreadsheet_id
 from src.integrations.automation.core.sheets import authorize
@@ -76,6 +76,25 @@ def worklog(worklog_id: str = "99", key: str = "ABC-1") -> dict:
 
 
 class AutomationMCPTests(unittest.TestCase):
+    def test_automation_uses_custom_fields_from_its_selected_jira_project(self):
+        integrations = dict(config.CONFIG["integrations"])
+        jira = dict(integrations["jira"])
+        jira["projects"] = [{
+            "id": "primary", "key": "ABC", "read_only": False,
+            "story_points_field": "customfield_54321",
+            "epic_link_field": "customfield_54322",
+        }]
+        integrations["jira"] = jira
+        automation = dict(integrations["automation"])
+        automation.update({"enabled": True, "jira_project": "primary"})
+        automation.pop("story_points_field", None)
+        automation.pop("epic_link_field", None)
+        integrations["automation"] = automation
+        with patch.object(config, "CONFIG", {**config.CONFIG, "integrations": integrations}):
+            loaded = load_settings()
+        self.assertEqual(loaded.story_points_field, "customfield_54321")
+        self.assertEqual(loaded.epic_link_field, "customfield_54322")
+
     def test_authorize_imports_client_and_token_into_keychain(self):
         class FakeCredentials:
             @staticmethod

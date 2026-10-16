@@ -13,6 +13,22 @@ from typing import Any
 from . import config
 
 
+def normalize_space_path(space: str) -> str:
+    """Return a canonical slash-separated XWiki space path.
+
+    XWiki search results and document references commonly use dots for nested
+    spaces. Accept that spelling at tool boundaries while preferring '/' in
+    inputs and outputs.
+    """
+    raw = space.strip().strip("/")
+    if "/" not in raw:
+        raw = raw.replace(".", "/")
+    parts = [part.strip() for part in raw.split("/")]
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("space must contain valid space names separated by '/'.")
+    return "/".join(parts)
+
+
 def wiki_url(resource: str = "", params: list[tuple[str, str]] | None = None) -> str:
     """Build a URL below the configured wiki resource."""
     path = f"{config.rest_root()}/wikis/{urllib.parse.quote(config.current().wiki, safe='')}"
@@ -25,9 +41,7 @@ def wiki_url(resource: str = "", params: list[tuple[str, str]] | None = None) ->
 
 def page_url(space: str, page: str, suffix: str = "") -> str:
     """Build a page URL, accepting nested space paths separated by '/'."""
-    space_parts = [part.strip() for part in space.split("/")]
-    if not space_parts or any(part in {"", ".", ".."} for part in space_parts):
-        raise ValueError("space must contain valid space names separated by '/'.")
+    space_parts = normalize_space_path(space).split("/")
     page = page.strip()
     if not page or page in {".", ".."} or "/" in page or "\\" in page:
         raise ValueError("page must be a single, non-empty page name.")
@@ -145,7 +159,7 @@ def all_pages(space: str | None = None, author: str | None = None, max_pages: in
     """Fetch pages in bounded chunks from the wiki-wide page endpoint."""
     params: list[tuple[str, str]] = [("start", "0"), ("number", "100")]
     if space:
-        params.append(("space", space))
+        params.append(("space", normalize_space_path(space).replace("/", ".")))
     if author:
         params.append(("author", author))
     results: list[dict[str, Any]] = []
@@ -169,7 +183,7 @@ def page_fields(item: dict[str, Any]) -> dict[str, Any]:
     # XWiki represents nested references with dots in summary metadata, while
     # the REST page URL builder accepts slash-separated space paths.
     if space:
-        space = "/".join(part for part in space.split(".") if part)
+        space = normalize_space_path(space)
     return {
         "fullName": value_text(item, "fullName", "pageFullName", "id"),
         "title": value_text(item, "title"),

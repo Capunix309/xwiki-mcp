@@ -4,7 +4,7 @@ import urllib.parse
 
 from mcp.types import ToolAnnotations
 from ..core import config
-from ..core.client import all_pages, get, get_page, page_fields, records, value_text
+from ..core.client import all_pages, get, get_page, normalize_space_path, page_fields, records, value_text
 
 LINK = re.compile(r"\[\[(.*?)\]\]")
 
@@ -77,5 +77,14 @@ def register(mcp):
             raise ValueError("scopes may contain name, title, content, or objects.")
         params = [("q", query), ("number", str(limit)), ("start", str(start))]
         params.extend(("scope", scope) for scope in selected)
-        resource = f"spaces/{'/spaces/'.join(urllib.parse.quote(p.strip(), safe='') for p in space.split('/'))}/search" if space else "search"
-        return json.dumps({"wiki": config.current().wiki, "results": get(resource, params)}, ensure_ascii=False, indent=2)
+        resource = (f"spaces/{'/spaces/'.join(urllib.parse.quote(p, safe='') for p in normalize_space_path(space).split('/'))}/search"
+                    if space else "search")
+        results = get(resource, params)
+        if isinstance(results, dict):
+            for key in ("searchResults", "results"):
+                items = results.get(key)
+                if isinstance(items, list):
+                    for item in items:
+                        if isinstance(item, dict) and item.get("space"):
+                            item["space"] = normalize_space_path(str(item["space"]))
+        return json.dumps({"wiki": config.current().wiki, "results": results}, ensure_ascii=False, indent=2)

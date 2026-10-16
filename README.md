@@ -39,9 +39,14 @@ Add one `[[integrations.jira.projects]]` block per project. `id` is a unique sel
 id = "primary"
 key = "ABC"
 read_only = true
+epic_name_field = "customfield_12347"
+story_points_field = "customfield_12345"
+epic_link_field = "customfield_12346"
 ```
 
 Replace `YOUR_PROJECT_KEY` in the supplied template with a configured project key. Add more blocks for other projects. Searches can cover all configured projects or select one by `id` or key. To disable Jira entirely, set `enabled = false` under `[integrations.jira]`.
+
+Jira custom-field IDs belong on each `[[integrations.jira.projects]]` entry, because field IDs can differ between Jira projects. Configure `epic_name_field`, `story_points_field`, and `epic_link_field` using the IDs from that project's Jira instance. Find them in Jira field metadata or by inspecting an issue that already has each value. Automation uses the fields from the Jira project selected by `jira_project`.
 
 ### Credentials and tool visibility
 
@@ -58,12 +63,10 @@ jira_project = "primary"
 board_id = 1
 spreadsheet_url = "https://docs.google.com/spreadsheets/d/REPLACE_WITH_SPREADSHEET_ID/edit"
 timezone = "UTC"
-story_points_field = "customfield_12345"
-epic_link_field = "customfield_12346"
 team_members = ["Person One", "Person Two", "Person Three", "Person Four", "Person Five"]
 ```
 
-Replace the Jira project selector, board ID, spreadsheet URL, custom field IDs, roster, and timezone with values for your setup. Find a board ID in the Jira board URL or with `jira_list_boards`. Story points use the Jira custom field ID shown in issue data or Jira field metadata. The spreadsheet URL may be copied from the browser address bar. The configured roster should match the person names used in that workbook.
+Replace the Jira project selector, board ID, spreadsheet URL, roster, and timezone with values for your setup. Find a board ID in the Jira board URL or with `jira_list_boards`. The custom field IDs are configured on the selected Jira project above. The spreadsheet URL may be copied from the browser address bar. The configured roster should match the person names used in that workbook.
 
 Dates are controlled by the caller for each sync. Pass optional `start_date` and `end_date` values in `YYYY-MM-DD` format when Jira's sprint dates do not match the reporting window. If omitted, the tool uses the sprint dates returned by Jira. If Jira does not provide a required date, pass it in the tool call.
 
@@ -155,8 +158,8 @@ To run the server manually for debugging only, open a terminal in the MCP-tools 
 - `jira_search_users` (read) finds users assignable to a project by name or email.
 - `jira_get_issue_types` (read) lists the issue types available in a project.
 - `jira_get_priorities` (read) lists Jira priorities for a configured project.
-- `jira_create_issue` (write) creates an issue with a required description prefixed by `[AI]` and adds the `ai-assisted` label.
-- `jira_update_issue` (write) updates an issue's summary, description, assignee, priority, and/or labels.
+- `jira_create_issue` (write) creates an issue with a required description prefixed by `[AI]` and adds the `ai-assisted` label; it can set an Epic's required name, story points, and parent Epic.
+- `jira_update_issue` (write) updates an issue's summary, description, assignee, priority, labels, story points, and/or parent Epic; set `clear_epic_link = true` to remove its Epic assignment.
 - `jira_add_comment` (write) adds an issue comment prefixed with `[AI]`.
 - `jira_add_worklog` (write) records time spent with a required comment prefixed with `[AI]`.
 - `jira_transition_issue` (write) moves an issue through one of its currently available workflow transitions.

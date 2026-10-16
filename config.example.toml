@@ -46,6 +46,9 @@ password_env = "JIRA_PASSWORD"
 id = "primary"
 key = "YOUR_PROJECT_KEY"
 read_only = false
+epic_name_field = "customfield_12347"
+story_points_field = "customfield_12345"
+epic_link_field = "customfield_12346"
 
 [integrations.automation]
 # Enable after setting the project, board, sheet, and Google OAuth client path.
@@ -54,6 +57,4 @@ jira_project = "primary"
 board_id = 1 # Replace with the board ID from its Jira URL.
 spreadsheet_url = "https://docs.google.com/spreadsheets/d/REPLACE_WITH_SPREADSHEET_ID/edit"
 timezone = "UTC"
-story_points_field = "customfield_12345"
-epic_link_field = "customfield_12346"
 team_members = ["Person One", "Person Two", "Person Three", "Person Four", "Person Five"]

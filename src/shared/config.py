@@ -73,6 +73,15 @@ def _read_config(path: Path = CONFIG_PATH) -> dict:
     for item in jira_projects:
         if not isinstance(item.get("read_only", True), bool):
             raise ValueError(f"read_only must be true or false for Jira project '{item['id']}'.")
+    for project in jira_projects:
+        for field_name in ("epic_name_field", "story_points_field", "epic_link_field"):
+            field_id = project.get(field_name)
+            if field_id is not None and (
+                not isinstance(field_id, str) or not re.fullmatch(r"customfield_[0-9]+", field_id)
+            ):
+                raise ValueError(
+                    f"Project '{project['id']}' {field_name} must look like customfield_12345."
+                )
 
     xwiki = integrations["xwiki"]
     wikis = xwiki.get("wikis", [])
@@ -109,13 +118,11 @@ def _read_config(path: Path = CONFIG_PATH) -> dict:
         if (not parsed_sheet or parsed_sheet.netloc not in {"docs.google.com", "sheets.google.com"}
                 or not re.fullmatch(r"/spreadsheets/d/[A-Za-z0-9_-]+(?:/.*)?", parsed_sheet.path)):
             raise ValueError("Set integrations.automation.spreadsheet_url to a Google Sheets URL.")
-        story_points_field = automation.get("story_points_field")
-        if not isinstance(story_points_field, str) or not re.fullmatch(r"customfield_[0-9]+", story_points_field):
-            raise ValueError("integrations.automation.story_points_field must look like customfield_12345.")
-        epic_link_field = automation.get("epic_link_field")
-        if epic_link_field is not None and (not isinstance(epic_link_field, str)
-                                             or not re.fullmatch(r"customfield_[0-9]+", epic_link_field)):
-            raise ValueError("integrations.automation.epic_link_field must look like customfield_12345.")
+        jira_project = next(project for project in jira_projects if project["id"] == project_id)
+        if not jira_project.get("story_points_field"):
+            raise ValueError(
+                f"Configure story_points_field on Jira project '{project_id}' for automation."
+            )
         members = automation.get("team_members")
         if (not isinstance(members, list) or not members
                 or any(not isinstance(member, str) or not member.strip() for member in members)
