@@ -97,7 +97,7 @@ Install the MCP server once, then register it only in each project where you wan
 From the MCP-tools repository root, install its dependencies:
 
 ```sh
-python3 -m venv .venv
+python3.13 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 ```
